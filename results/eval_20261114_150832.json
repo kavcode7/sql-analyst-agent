@@ -1,0 +1,110 @@
+[
+  {
+    "system": "one_shot",
+    "run": 1,
+    "id": "e2",
+    "category": "trap_spelling",
+    "question": "How many orders were cancelled?",
+    "correct": false,
+    "error": "wrong result: [(0,)]",
+    "predicted_sql": "SELECT COUNT(*) AS cancelled_orders FROM orders WHERE order_status = 'cancelled';",
+    "answer": "The orders table has an order_status column; cancelled orders are those with order_status = 'cancelled'. A simple COUNT on orders filtered by that status answers the question.",
+    "latency_s": 3.29
+  },
+  {
+    "system": "one_shot",
+    "run": 1,
+    "id": "e1",
+    "category": "easy",
+    "question": "How many orders were delivered?",
+    "correct": true,
+    "error": null,
+    "predicted_sql": "SELECT COUNT(*) AS delivered_orders FROM orders WHERE order_status = 'delivered';",
+    "answer": "Count rows in orders where order_status is 'delivered'. Only the orders table is needed, no joins.",
+    "latency_s": 3.75
+  },
+  {
+    "system": "agent_loop",
+    "run": 1,
+    "id": "e1",
+    "category": "easy",
+    "question": "How many orders were delivered?",
+    "correct": true,
+    "error": null,
+    "predicted_sql": "SELECT COUNT(*) AS delivered_orders\nFROM orders\nWHERE order_status = 'delivered';",
+    "answer": "**96,478 orders** have `order_status = 'delivered'`.\n\nThis count comes straight from the status distribution, so I didn't need a separate query. The `orders` table has 99,441 rows in total, and the other statuses are shipped (1,107), canceled (625), unavailable (609), invoiced (314), processing (301), created (5), and approved (2).\n\n```sql\nSELECT COUNT(*) AS delivered_orders\nFROM orders\nWHERE order_status = 'delivered';\n```",
+    "latency_s": 3.98
+  },
+  {
+    "system": "agent_loop",
+    "run": 1,
+    "id": "e2",
+    "category": "trap_spelling",
+    "question": "How many orders were cancelled?",
+    "correct": true,
+    "error": null,
+    "predicted_sql": "SELECT COUNT(*) AS cancelled_orders FROM orders WHERE order_status = 'canceled'",
+    "answer": "625 orders were cancelled. This counts orders with `order_status = 'canceled'`, the spelling stored in the data.\n\n```sql\nSELECT COUNT(*) AS cancelled_orders FROM orders WHERE order_status = 'canceled'\n```",
+    "latency_s": 4.4
+  },
+  {
+    "system": "langgraph",
+    "run": 1,
+    "id": "e1",
+    "category": "easy",
+    "question": "How many orders were delivered?",
+    "correct": true,
+    "error": null,
+    "predicted_sql": "SELECT COUNT(*) AS delivered_orders\nFROM orders\nWHERE order_status = 'delivered';",
+    "answer": "**96,478 orders** have the status `delivered`.\n\nI counted orders where `order_status = 'delivered'` in the `orders` table. That status value is the only one that means delivered in this data.\n\n```sql\nSELECT COUNT(*) AS delivered_orders\nFROM orders\nWHERE order_status = 'delivered';\n```",
+    "latency_s": 5.46
+  },
+  {
+    "system": "one_shot",
+    "run": 1,
+    "id": "h5",
+    "category": "unanswerable",
+    "question": "What is the profit margin for each product category?",
+    "correct": true,
+    "error": null,
+    "predicted_sql": null,
+    "answer": "Profit margin requires cost or profit data, but the schema has no cost of goods, cost, or margin column. The order_items table only has price and freight_value, which are revenue-side figures, so margin per category cannot be computed from this database.",
+    "latency_s": 2.9
+  },
+  {
+    "system": "langgraph",
+    "run": 1,
+    "id": "e2",
+    "category": "trap_spelling",
+    "question": "How many orders were cancelled?",
+    "correct": true,
+    "error": null,
+    "predicted_sql": "SELECT COUNT(*) AS cancelled_orders FROM orders WHERE order_status = 'canceled'",
+    "answer": "There were 625 cancelled orders. The status is stored as \"canceled\" (American spelling), and that is the only value I counted.\n\n```sql\nSELECT COUNT(*) AS cancelled_orders FROM orders WHERE order_status = 'canceled'\n```",
+    "latency_s": 4.17
+  },
+  {
+    "system": "agent_loop",
+    "run": 1,
+    "id": "h5",
+    "category": "unanswerable",
+    "question": "What is the profit margin for each product category?",
+    "correct": true,
+    "error": null,
+    "predicted_sql": null,
+    "answer": "CANNOT_ANSWER\n\nThe database has no cost data, so profit margin can't be calculated. Profit margin is (revenue \u2212 cost) / revenue, and I found no column for product cost, unit cost, or COGS in any table.\n\nWhat the data does contain:\n- **order_items**: `price` and `freight_value` per item. These are revenue-side and shipping figures, not costs of goods sold.\n- **order_payments**: `payment_value`, the amount the customer paid.\n- **products**: category, weight, and dimensions, but no cost or margin field.\n- **orders, customers, sellers, product_category_name_translation**: none has cost information.\n\nFreight is a shipping charge, so treating it as cost would not give a true margin. Without the cost of each product, any margin figure would be invented.\n\nA related question the data can answer: **What is the total revenue, average item price, and freight-to-price ratio for each product category?** That would show which categories bring in the most revenue and how much shipping adds to the customer's cost, but not profitability. If you can load a product cost table (for example, a unit cost per product_id), I can compute margin by category.",
+    "latency_s": 6.02
+  },
+  {
+    "system": "langgraph",
+    "run": 1,
+    "id": "h5",
+    "category": "unanswerable",
+    "question": "What is the profit margin for each product category?",
+    "correct": true,
+    "error": null,
+    "predicted_sql": null,
+    "answer": "CANNOT_ANSWER. The database has no cost data, so profit margin can't be calculated.\n\n- **products** holds only physical attributes (name length, photo count, weight, dimensions) and the category name. There is no cost or COGS column.\n- **order_items** has `price` and `freight_value`, which are what the customer paid and the shipping charge. These are revenue-side figures.\n- **order_payments** has the amounts customers paid, not what the business spent to source or make the goods.\n- **sellers** has location data only.\n\nProfit margin needs product cost (or a supplier/seller cost) per item, and nothing in the schema provides it.\n\nQuestions the data can answer:\n- Total sales revenue (sum of `price`) and order count per product category.\n- Freight as a share of product price per category, which indicates how much shipping cost is passed on to customers.\n- Average item price per category.\n\nIf you can add a cost table (for example, `product_id`, `unit_cost`) to the database, I can compute margin per category as (revenue \u2212 cost) / revenue.",
+    "latency_s": 8.16
+  }
+]

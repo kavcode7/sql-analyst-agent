@@ -1,0 +1,10 @@
+pandas
+anthropic
+pydantic
+python-dotenv
+langgraph
+langchain
+langchain-anthropic
+langfuse
+fastapi
+uvicorn

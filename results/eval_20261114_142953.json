@@ -1,0 +1,110 @@
+[
+  {
+    "system": "one_shot",
+    "run": 1,
+    "id": "e2",
+    "category": "trap_spelling",
+    "question": "How many orders were cancelled?",
+    "correct": true,
+    "error": null,
+    "predicted_sql": "SELECT COUNT(*) AS cancelled_orders FROM orders WHERE order_status = 'canceled';",
+    "answer": "The orders table has an order_status column; cancelled orders are those with status 'canceled' (Olist uses this spelling). A simple COUNT with a filter on orders answers the question.",
+    "latency_s": 2.47
+  },
+  {
+    "system": "one_shot",
+    "run": 1,
+    "id": "e1",
+    "category": "easy",
+    "question": "How many orders were delivered?",
+    "correct": true,
+    "error": null,
+    "predicted_sql": "SELECT COUNT(*) AS delivered_orders FROM orders WHERE order_status = 'delivered';",
+    "answer": "The orders table has an order_status column; delivered orders have status 'delivered'. A simple COUNT with a filter on that status answers the question.",
+    "latency_s": 3.54
+  },
+  {
+    "system": "agent_loop",
+    "run": 1,
+    "id": "e1",
+    "category": "easy",
+    "question": "How many orders were delivered?",
+    "correct": true,
+    "error": null,
+    "predicted_sql": "SELECT COUNT(*) AS delivered_orders FROM orders WHERE order_status = 'delivered'",
+    "answer": "96,478 orders have the status \"delivered.\"\n\n```sql\nSELECT COUNT(*) AS delivered_orders FROM orders WHERE order_status = 'delivered'\n```",
+    "latency_s": 4.04
+  },
+  {
+    "system": "agent_loop",
+    "run": 1,
+    "id": "e2",
+    "category": "trap_spelling",
+    "question": "How many orders were cancelled?",
+    "correct": true,
+    "error": null,
+    "predicted_sql": "SELECT COUNT(*) AS cancelled_orders FROM orders WHERE order_status = 'canceled';",
+    "answer": "625 orders were cancelled. The status is stored as `canceled` (one \"l\"), and the count is exact.\n\n```sql\nSELECT COUNT(*) AS cancelled_orders FROM orders WHERE order_status = 'canceled';\n```",
+    "latency_s": 4.33
+  },
+  {
+    "system": "langgraph",
+    "run": 1,
+    "id": "e1",
+    "category": "easy",
+    "question": "How many orders were delivered?",
+    "correct": true,
+    "error": null,
+    "predicted_sql": "SELECT COUNT(*) AS delivered_orders FROM orders WHERE order_status = 'delivered';",
+    "answer": "96,478 orders have the status `delivered`.\n\n```sql\nSELECT COUNT(*) AS delivered_orders FROM orders WHERE order_status = 'delivered';\n```",
+    "latency_s": 6.12
+  },
+  {
+    "system": "langgraph",
+    "run": 1,
+    "id": "e2",
+    "category": "trap_spelling",
+    "question": "How many orders were cancelled?",
+    "correct": true,
+    "error": null,
+    "predicted_sql": "SELECT COUNT(*) AS cancelled_orders FROM orders WHERE order_status = 'canceled'",
+    "answer": "625 orders were cancelled. The status is stored as `canceled` (one \"l\"), and the count comes from the `orders` table.\n\n```sql\nSELECT COUNT(*) AS cancelled_orders FROM orders WHERE order_status = 'canceled'\n```",
+    "latency_s": 4.34
+  },
+  {
+    "system": "one_shot",
+    "run": 1,
+    "id": "h5",
+    "category": "unanswerable",
+    "question": "What is the profit margin for each product category?",
+    "correct": false,
+    "error": "answered an unanswerable question",
+    "predicted_sql": "SELECT t.product_category_name_english AS category, ROUND(SUM(oi.price), 2) AS total_revenue, ROUND(SUM(oi.freight_value), 2) AS total_freight, ROUND(SUM(oi.freight_value) * 100.0 / SUM(oi.price), 2) AS freight_pct_of_revenue FROM order_items oi JOIN products p ON oi.product_id = p.product_id JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name GROUP BY t.product_category_name_english ORDER BY total_revenue DESC LIMIT 20",
+    "answer": "The schema has no product cost or COGS data, so true profit margin cannot be computed. As a proxy, this query joins order_items to products and the English category translation, then reports each category's total revenue (sum of price) and freight as a share of revenue, which shows how much of the price goes to shipping rather than to profit. The reasoning and column names make clear this is not a profit margin.",
+    "latency_s": 4.13
+  },
+  {
+    "system": "agent_loop",
+    "run": 1,
+    "id": "h5",
+    "category": "unanswerable",
+    "question": "What is the profit margin for each product category?",
+    "correct": false,
+    "error": "answered an unanswerable question",
+    "predicted_sql": "SELECT COALESCE(t.product_category_name_english, p.product_category_name) AS category,\n       COUNT(*) AS items,\n       ROUND(SUM(oi.price),2) AS revenue,\n       ROUND(SUM(oi.freight_value),2) AS freight,\n       ROUND(100.0*SUM(oi.freight_value)/SUM(oi.price),1) AS freight_pct_of_price\nFROM order_items oi\nJOIN products p ON p.product_id = oi.product_id\nLEFT JOIN product_category_name_translation t\n       ON t.product_category_name = p.product_category_name\nGROUP BY category\nORDER BY revenue DESC\nLIMIT 15;",
+    "answer": "I can't calculate profit margin for each category because the database has no cost data. Profit margin needs cost of goods (or some other cost figure), and none of the tables contain it. The `order_items` table has only `price` and `freight_value`, and `products`, `sellers`, `orders`, and `order_payments` have no cost fields either.\n\nWhat the data can support is revenue and freight per category, which is a related but different measure. The top 15 categories by item revenue are below. Freight as a share of product price is shown as a rough cost-to-serve indicator, not a margin.\n\n| Category | Items | Revenue (price) | Freight | Freight % of price |\n|---|---|---|---|---|\n| health_beauty | 9,670 | 1,258,681 | 182,567 | 14.5% |\n| watches_gifts | 5,991 | 1,205,006 | 100,536 | 8.3% |\n| bed_bath_table | 11,115 | 1,036,989 | 204,693 | 19.7% |\n| sports_leisure | 8,641 | 988,049 | 168,608 | 17.1% |\n| computers_accessories | 7,827 | 911,954 | 147,318 | 16.2% |\n| furniture_decor | 8,334 | 729,762 | 172,749 | 23.7% |\n| cool_stuff | 3,796 | 635,291 | 84,039 | 13.2% |\n| housewares | 6,964 | 632,249 | 146,149 | 23.1% |\n| auto | 4,235 | 592,720 | 92,664 | 15.6% |\n| garden_tools | 4,347 | 485,256 | 98,963 | 20.4% |\n| toys | 4,117 | 483,947 | 77,426 | 16.0% |\n| baby | 3,065 | 411,765 | 68,353 | 16.6% |\n| perfumery | 3,419 | 399,125 | 54,214 | 13.6% |\n| telephony | 4,545 | 323,668 | 71,216 | 22.0% |\n| office_furniture | 1,691 | 273,961 | 68,572 | 25.0% |\n\nIf you can provide product cost data (for example, a cost-per-product or cost-per-category table), I can compute true margins by joining it to `order_items` on `product_id`.\n\n```sql\nSELECT COALESCE(t.product_category_name_english, p.product_category_name) AS category,\n       COUNT(*) AS items,\n       ROUND(SUM(oi.price),2) AS revenue,\n       ROUND(SUM(oi.freight_value),2) AS freight,\n       ROUND(100.0*SUM(oi.freight_value)/SUM(oi.price),1) AS freight_pct_of_price\nFROM order_items oi\nJOIN products p ON p.product_id = oi.product_id\nLEFT JOIN product_category_name_translation t\n       ON t.product_category_name = p.product_category_name\nGROUP BY category\nORDER BY revenue DESC\nLIMIT 15;\n```",
+    "latency_s": 11.04
+  },
+  {
+    "system": "langgraph",
+    "run": 1,
+    "id": "h5",
+    "category": "unanswerable",
+    "question": "What is the profit margin for each product category?",
+    "correct": false,
+    "error": "answered an unanswerable question",
+    "predicted_sql": "SELECT COALESCE(t.product_category_name_english, p.product_category_name) AS category,\n       ROUND(SUM(oi.price), 2) AS revenue,\n       ROUND(SUM(oi.freight_value), 2) AS freight,\n       ROUND(100.0 * (SUM(oi.price) - SUM(oi.freight_value)) / SUM(oi.price), 2) AS margin_after_freight_pct\nFROM order_items oi\nJOIN products p ON p.product_id = oi.product_id\nLEFT JOIN product_category_name_translation t ON t.product_category_name = p.product_category_name\nGROUP BY category\nORDER BY revenue DESC;",
+    "answer": "I can't calculate a true profit margin, because the database has no cost or COGS data. The tables contain only selling price (`order_items.price`) and shipping fee (`order_items.freight_value`), so profit cannot be derived.\n\nAs a rough proxy, I computed the share of item revenue left after freight: (price \u2212 freight) / price, grouped by English category name. This is not profit, since product cost is excluded.\n\nResults (first 50 of the categories, sorted by revenue; the query output was truncated):\n\n| Category | Revenue (BRL) | Freight | Margin after freight |\n|---|---|---|---|\n| health_beauty | 1,258,681 | 182,567 | 85.5% |\n| watches_gifts | 1,205,006 | 100,536 | 91.7% |\n| bed_bath_table | 1,036,989 | 204,693 | 80.3% |\n| sports_leisure | 988,049 | 168,608 | 82.9% |\n| computers_accessories | 911,954 | 147,318 | 83.9% |\n| furniture_decor | 729,762 | 172,749 | 76.3% |\n| cool_stuff | 635,291 | 84,039 | 86.8% |\n| housewares | 632,249 | 146,149 | 76.9% |\n| electronics | 160,247 | 46,578 | 70.9% |\n| office_furniture | 273,961 | 68,572 | 75.0% |\n\nAcross the categories shown, the post-freight share ranges from about 70% (electronics, signaling_and_security) to about 96% (computers). Categories with high freight relative to price, such as electronics and furniture, rank lowest. About 180k in revenue has no category mapping and appears as NULL.\n\nIf you can provide a cost-of-goods table or per-product cost, I can compute true margins.\n\n```sql\nSELECT COALESCE(t.product_category_name_english, p.product_category_name) AS category,\n       ROUND(SUM(oi.price), 2) AS revenue,\n       ROUND(SUM(oi.freight_value), 2) AS freight,\n       ROUND(100.0 * (SUM(oi.price) - SUM(oi.freight_value)) / SUM(oi.price), 2) AS margin_after_freight_pct\nFROM order_items oi\nJOIN products p ON p.product_id = oi.product_id\nLEFT JOIN product_category_name_translation t ON t.product_category_name = p.product_category_name\nGROUP BY category\nORDER BY revenue DESC;\n```",
+    "latency_s": 13.3
+  }
+]

@@ -1,0 +1,122 @@
+[
+  {
+    "id": "e1",
+    "category": "easy",
+    "question": "How many orders were delivered?",
+    "gold_sql": "SELECT COUNT(*) FROM orders WHERE order_status = 'delivered'"
+  },
+  {
+    "id": "e2",
+    "category": "trap_spelling",
+    "question": "How many orders were cancelled?",
+    "gold_sql": "SELECT COUNT(*) FROM orders WHERE order_status = 'canceled'"
+  },
+  {
+    "id": "e3",
+    "category": "multi_join",
+    "question": "What are the top 5 product categories by number of items sold? Give the English category names.",
+    "gold_sql": "SELECT COALESCE(t.product_category_name_english, p.product_category_name) AS category FROM order_items oi LEFT JOIN products p ON oi.product_id = p.product_id LEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name GROUP BY category ORDER BY COUNT(*) DESC LIMIT 5"
+  },
+  {
+    "id": "e4",
+    "category": "trap_counting",
+    "question": "Which seller has the most orders? Return the seller_id.",
+    "gold_sql": "SELECT seller_id FROM order_items GROUP BY seller_id ORDER BY COUNT(DISTINCT order_id) DESC LIMIT 1"
+  },
+  {
+    "id": "e5",
+    "category": "trap_identity",
+    "question": "How many customers placed more than one order?",
+    "gold_sql": "SELECT COUNT(*) FROM (SELECT c.customer_unique_id FROM orders o JOIN customers c ON o.customer_id = c.customer_id GROUP BY c.customer_unique_id HAVING COUNT(DISTINCT o.order_id) > 1)"
+  },
+  {
+    "id": "h1",
+    "category": "dates",
+    "question": "Which month in 2017 had the highest total payment value? Answer as YYYY-MM, based on the order purchase date.",
+    "gold_sql": "SELECT strftime('%Y-%m', o.order_purchase_timestamp) AS month FROM orders o JOIN order_payments p ON o.order_id = p.order_id WHERE strftime('%Y', o.order_purchase_timestamp) = '2017' GROUP BY month ORDER BY SUM(p.payment_value) DESC LIMIT 1"
+  },
+  {
+    "id": "h2",
+    "category": "trap_dedup",
+    "question": "What is the average total payment per order, across all orders that have payments?",
+    "gold_sql": "SELECT AVG(order_total) FROM (SELECT order_id, SUM(payment_value) AS order_total FROM order_payments GROUP BY order_id)"
+  },
+  {
+    "id": "h3",
+    "category": "dates",
+    "question": "What percentage of delivered orders arrived after their estimated delivery date? Compare dates, not times, and give a percentage between 0 and 100.",
+    "gold_sql": "SELECT 100.0 * SUM(CASE WHEN date(order_delivered_customer_date) > date(order_estimated_delivery_date) THEN 1 ELSE 0 END) / COUNT(*) FROM orders WHERE order_status = 'delivered' AND order_delivered_customer_date IS NOT NULL"
+  },
+  {
+    "id": "h4",
+    "category": "multi_hop",
+    "question": "Among orders that include at least one item from a seller based in the state SP, which customer state gives the lowest average review score?",
+    "gold_sql": "SELECT c.customer_state FROM order_reviews r JOIN orders o ON r.order_id = o.order_id JOIN customers c ON o.customer_id = c.customer_id WHERE o.order_id IN (SELECT oi.order_id FROM order_items oi JOIN sellers s ON oi.seller_id = s.seller_id WHERE s.seller_state = 'SP') GROUP BY c.customer_state ORDER BY AVG(r.review_score) ASC LIMIT 1"
+  },
+  {
+    "id": "h5",
+    "category": "unanswerable",
+    "question": "What is the profit margin for each product category?",
+    "gold_sql": null
+  },
+  {
+    "id": "m1",
+    "category": "trap_identity",
+    "question": "How many unique customers are there?",
+    "gold_sql": "SELECT COUNT(DISTINCT customer_unique_id) FROM customers"
+  },
+  {
+    "id": "m2",
+    "category": "easy",
+    "question": "Which payment type is used most often?",
+    "gold_sql": "SELECT payment_type FROM order_payments GROUP BY payment_type ORDER BY COUNT(*) DESC LIMIT 1"
+  },
+  {
+    "id": "m3",
+    "category": "easy",
+    "question": "What is the average review score across all reviews?",
+    "gold_sql": "SELECT AVG(review_score) FROM order_reviews"
+  },
+  {
+    "id": "m4",
+    "category": "trap_identity",
+    "question": "Which city has the most unique customers?",
+    "gold_sql": "SELECT customer_city FROM customers GROUP BY customer_city ORDER BY COUNT(DISTINCT customer_unique_id) DESC LIMIT 1"
+  },
+  {
+    "id": "m5",
+    "category": "easy",
+    "question": "How many sellers are located in the state RJ?",
+    "gold_sql": "SELECT COUNT(*) FROM sellers WHERE seller_state = 'RJ'"
+  },
+  {
+    "id": "m6",
+    "category": "dates",
+    "question": "For delivered orders, what is the average number of days between purchase and delivery to the customer?",
+    "gold_sql": "SELECT AVG(julianday(order_delivered_customer_date) - julianday(order_purchase_timestamp)) FROM orders WHERE order_status = 'delivered' AND order_delivered_customer_date IS NOT NULL"
+  },
+  {
+    "id": "m7",
+    "category": "dates",
+    "question": "How many orders were purchased in 2018?",
+    "gold_sql": "SELECT COUNT(*) FROM orders WHERE strftime('%Y', order_purchase_timestamp) = '2018'"
+  },
+  {
+    "id": "m8",
+    "category": "multi_join",
+    "question": "What are the top 3 product categories by total item revenue (sum of item price)? Give the English category names.",
+    "gold_sql": "SELECT COALESCE(t.product_category_name_english, p.product_category_name) AS category FROM order_items oi LEFT JOIN products p ON oi.product_id = p.product_id LEFT JOIN product_category_name_translation t ON p.product_category_name = t.product_category_name GROUP BY category ORDER BY SUM(oi.price) DESC LIMIT 3"
+  },
+  {
+    "id": "m9",
+    "category": "trap_dedup",
+    "question": "How many orders have more than one payment record?",
+    "gold_sql": "SELECT COUNT(*) FROM (SELECT order_id FROM order_payments GROUP BY order_id HAVING COUNT(*) > 1)"
+  },
+  {
+    "id": "m10",
+    "category": "unanswerable",
+    "question": "What is the age distribution of our customers?",
+    "gold_sql": null
+  }
+]

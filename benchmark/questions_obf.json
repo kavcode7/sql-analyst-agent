@@ -1,0 +1,122 @@
+[
+  {
+    "id": "e1",
+    "category": "easy",
+    "question": "How many orders were delivered?",
+    "gold_sql": "SELECT COUNT(*) FROM purchases WHERE p_state = 'DLV'"
+  },
+  {
+    "id": "e2",
+    "category": "trap_spelling",
+    "question": "How many orders were cancelled?",
+    "gold_sql": "SELECT COUNT(*) FROM purchases WHERE p_state = 'CXL'"
+  },
+  {
+    "id": "e3",
+    "category": "multi_join",
+    "question": "What are the top 5 product categories by number of items sold? Give the English category names.",
+    "gold_sql": "SELECT COALESCE(t.label_en, p.cat_code) AS category FROM purchase_lines oi LEFT JOIN catalog p ON oi.sku = p.sku LEFT JOIN cat_labels t ON p.cat_code = t.cat_code GROUP BY category ORDER BY COUNT(*) DESC LIMIT 5"
+  },
+  {
+    "id": "e4",
+    "category": "trap_counting",
+    "question": "Which seller has the most orders? Return the seller_id.",
+    "gold_sql": "SELECT vendor_ref FROM purchase_lines GROUP BY vendor_ref ORDER BY COUNT(DISTINCT purchase_id) DESC LIMIT 1"
+  },
+  {
+    "id": "e5",
+    "category": "trap_identity",
+    "question": "How many customers placed more than one order?",
+    "gold_sql": "SELECT COUNT(*) FROM (SELECT c.person_key FROM purchases o JOIN clients c ON o.client_ref = c.client_ref GROUP BY c.person_key HAVING COUNT(DISTINCT o.purchase_id) > 1)"
+  },
+  {
+    "id": "h1",
+    "category": "dates",
+    "question": "Which month in 2017 had the highest total payment value? Answer as YYYY-MM, based on the order purchase date.",
+    "gold_sql": "SELECT strftime('%Y-%m', o.created_ts) AS month FROM purchases o JOIN settlements p ON o.purchase_id = p.purchase_id WHERE strftime('%Y', o.created_ts) = '2017' GROUP BY month ORDER BY SUM(p.amt) DESC LIMIT 1"
+  },
+  {
+    "id": "h2",
+    "category": "trap_dedup",
+    "question": "What is the average total payment per order, across all orders that have payments?",
+    "gold_sql": "SELECT AVG(order_total) FROM (SELECT purchase_id, SUM(amt) AS order_total FROM settlements GROUP BY purchase_id)"
+  },
+  {
+    "id": "h3",
+    "category": "dates",
+    "question": "What percentage of delivered orders arrived after their estimated delivery date? Compare dates, not times, and give a percentage between 0 and 100.",
+    "gold_sql": "SELECT 100.0 * SUM(CASE WHEN date(received_ts) > date(eta_ts) THEN 1 ELSE 0 END) / COUNT(*) FROM purchases WHERE p_state = 'DLV' AND received_ts IS NOT NULL"
+  },
+  {
+    "id": "h4",
+    "category": "multi_hop",
+    "question": "Among orders that include at least one item from a seller based in the state SP, which customer state gives the lowest average review score?",
+    "gold_sql": "SELECT c.region FROM feedback r JOIN purchases o ON r.purchase_id = o.purchase_id JOIN clients c ON o.client_ref = c.client_ref WHERE o.purchase_id IN (SELECT oi.purchase_id FROM purchase_lines oi JOIN vendors s ON oi.vendor_ref = s.vendor_ref WHERE s.region = 'SP') GROUP BY c.region ORDER BY AVG(r.stars) ASC LIMIT 1"
+  },
+  {
+    "id": "h5",
+    "category": "unanswerable",
+    "question": "What is the profit margin for each product category?",
+    "gold_sql": null
+  },
+  {
+    "id": "m1",
+    "category": "trap_identity",
+    "question": "How many unique customers are there?",
+    "gold_sql": "SELECT COUNT(DISTINCT person_key) FROM clients"
+  },
+  {
+    "id": "m2",
+    "category": "easy",
+    "question": "Which payment type is used most often?",
+    "gold_sql": "SELECT method FROM settlements GROUP BY method ORDER BY COUNT(*) DESC LIMIT 1"
+  },
+  {
+    "id": "m3",
+    "category": "easy",
+    "question": "What is the average review score across all reviews?",
+    "gold_sql": "SELECT AVG(stars) FROM feedback"
+  },
+  {
+    "id": "m4",
+    "category": "trap_identity",
+    "question": "Which city has the most unique customers?",
+    "gold_sql": "SELECT city FROM clients GROUP BY city ORDER BY COUNT(DISTINCT person_key) DESC LIMIT 1"
+  },
+  {
+    "id": "m5",
+    "category": "easy",
+    "question": "How many sellers are located in the state RJ?",
+    "gold_sql": "SELECT COUNT(*) FROM vendors WHERE region = 'RJ'"
+  },
+  {
+    "id": "m6",
+    "category": "dates",
+    "question": "For delivered orders, what is the average number of days between purchase and delivery to the customer?",
+    "gold_sql": "SELECT AVG(julianday(received_ts) - julianday(created_ts)) FROM purchases WHERE p_state = 'DLV' AND received_ts IS NOT NULL"
+  },
+  {
+    "id": "m7",
+    "category": "dates",
+    "question": "How many orders were purchased in 2018?",
+    "gold_sql": "SELECT COUNT(*) FROM purchases WHERE strftime('%Y', created_ts) = '2018'"
+  },
+  {
+    "id": "m8",
+    "category": "multi_join",
+    "question": "What are the top 3 product categories by total item revenue (sum of item price)? Give the English category names.",
+    "gold_sql": "SELECT COALESCE(t.label_en, p.cat_code) AS category FROM purchase_lines oi LEFT JOIN catalog p ON oi.sku = p.sku LEFT JOIN cat_labels t ON p.cat_code = t.cat_code GROUP BY category ORDER BY SUM(oi.unit_amt) DESC LIMIT 3"
+  },
+  {
+    "id": "m9",
+    "category": "trap_dedup",
+    "question": "How many orders have more than one payment record?",
+    "gold_sql": "SELECT COUNT(*) FROM (SELECT purchase_id FROM settlements GROUP BY purchase_id HAVING COUNT(*) > 1)"
+  },
+  {
+    "id": "m10",
+    "category": "unanswerable",
+    "question": "What is the age distribution of our customers?",
+    "gold_sql": null
+  }
+]

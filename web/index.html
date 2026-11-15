@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SQL Analyst Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f6f4ef;
+    --surface: #ffffff;
+    --ink: #1c1d1f;
+    --muted: #6b6a66;
+    --line: #e2dfd7;
+    --accent: #0f6e5c;
+    --accent-soft: #e3f0ec;
+    --warn: #9a5b00;
+    --warn-soft: #fbf0dc;
+    --error: #a3302a;
+    --code-bg: #f1efe9;
+    --bar: #0f6e5c;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141516;
+      --surface: #1c1e20;
+      --ink: #ecebe7;
+      --muted: #9d9b95;
+      --line: #2e3033;
+      --accent: #4cc2a6;
+      --accent-soft: #17302b;
+      --warn: #e0a64a;
+      --warn-soft: #2e2516;
+      --error: #f08a80;
+      --code-bg: #232528;
+      --bar: #4cc2a6;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.55 var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 860px; margin: 0 auto; padding: 48px 16px 64px; }
+
+  /* header */
+  .eyebrow {
+    font: 500 12px/1 var(--mono);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 12px;
+  }
+  h1 { font-size: 30px; line-height: 1.2; font-weight: 600; margin: 0 0 10px; letter-spacing: -.01em; }
+  .lede { color: var(--muted); margin: 0 0 28px; max-width: 620px; }
+
+  /* ask box */
+  form {
+    display: flex;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 6px;
+  }
+  form:focus-within { border-color: var(--accent); }
+  input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    padding: 10px 12px;
+    outline: none;
+  }
+  button.ask {
+    border: 0;
+    border-radius: 7px;
+    background: var(--accent);
+    color: #fff;
+    font: 500 15px var(--sans);
+    padding: 0 20px;
+    cursor: pointer;
+  }
+  @media (prefers-color-scheme: dark) { button.ask { color: #0c1a17; } }
+  button.ask:disabled { opacity: .5; cursor: default; }
+
+  .examples { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; }
+  .examples button {
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font: 14px var(--sans);
+    cursor: pointer;
+  }
+  .examples button:hover { color: var(--ink); border-color: var(--muted); }
+
+  /* answers */
+  #thread { margin-top: 36px; display: flex; flex-direction: column; gap: 20px; }
+  .turn {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 22px 24px;
+  }
+  .question { font-weight: 600; font-size: 18px; margin: 0 0 14px; }
+
+  .trace { list-style: none; margin: 0 0 16px; padding: 0; font: 13px/1.5 var(--mono); color: var(--muted); }
+  .trace li { display: flex; gap: 10px; padding: 3px 0; }
+  .trace li > span:first-of-type { flex: none; white-space: nowrap; }
+  .trace li::before { content: "→"; color: var(--accent); flex: none; }
+  .trace li.err { color: var(--error); }
+  .trace li.err::before { content: "✕"; color: var(--error); }
+  .trace .detail { flex: 1; min-width: 0; color: var(--muted); opacity: .8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .working { font: 13px var(--mono); color: var(--accent); }
+  .working::after { content: ""; animation: dots 1.2s steps(4) infinite; }
+  @keyframes dots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
+
+  .answer p { margin: 0 0 10px; }
+  .answer ul { margin: 0 0 10px; padding-left: 20px; }
+  .answer code, .trace code { font-family: var(--mono); font-size: .9em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  .notice {
+    background: var(--warn-soft);
+    color: var(--warn);
+    font: 500 13px var(--mono);
+    padding: 6px 10px;
+    border-radius: 6px;
+    display: inline-block;
+    margin-bottom: 12px;
+  }
+  .error-box { color: var(--error); }
+
+  .stat { font-size: 40px; font-weight: 600; letter-spacing: -.02em; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
+  .stat-label { color: var(--muted); font-size: 14px; margin-bottom: 14px; }
+
+  .bars { margin: 14px 0 6px; display: grid; grid-template-columns: minmax(80px, max-content) 1fr; gap: 6px 12px; align-items: center; font-size: 14px; }
+  .bars .label { color: var(--muted); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+  .bars .track { display: flex; align-items: center; gap: 8px; }
+  .bars .bar { height: 14px; background: var(--bar); border-radius: 0 3px 3px 0; min-width: 2px; }
+  .bars .val { font: 12px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .table-wrap { overflow-x: auto; margin: 14px 0 6px; border: 1px solid var(--line); border-radius: 8px; max-height: 360px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { padding: 7px 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { font: 500 12px var(--mono); color: var(--muted); background: var(--code-bg); position: sticky; top: 0; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr:last-child td { border-bottom: 0; }
+  .answer table { margin: 6px 0 12px; border: 1px solid var(--line); }
+
+  details { margin-top: 12px; }
+  summary { cursor: pointer; font: 13px var(--mono); color: var(--muted); }
+  summary:hover { color: var(--ink); }
+  pre {
+    background: var(--code-bg);
+    border-radius: 8px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    font: 13px/1.55 var(--mono);
+    margin: 8px 0 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .meta { margin-top: 14px; font: 12px var(--mono); color: var(--muted); }
+
+  footer { margin-top: 48px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    main { padding-top: 32px; }
+    h1 { font-size: 24px; }
+    .turn { padding: 18px 16px; }
+    .bars .label { max-width: 120px; }
+    .trace li { flex-wrap: wrap; row-gap: 0; }
+    .trace .detail { flex-basis: 100%; padding-left: 22px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">Text-to-SQL agent</p>
+  <h1>Ask questions about 100k e-commerce orders</h1>
+  <p class="lede">The agent explores the database with tools, checks real values before filtering,
+    writes SQL, fixes its own errors, and shows its work. It runs on the public Olist dataset (Brazil, 2016–2018).</p>
+
+  <form id="ask-form">
+    <input id="q" name="q" autocomplete="off" maxlength="500"
+           placeholder="e.g. Which month in 2017 had the highest total payment value?">
+    <button class="ask" id="ask-btn" type="submit">Ask</button>
+  </form>
+  <div class="examples" id="examples"></div>
+
+  <section id="thread"></section>
+
+  <footer>
+    Read-only database · each question is answered independently · answers can be wrong, so check the SQL.
+  </footer>
+</main>
+
+<script>
+const EXAMPLES = [
+  "How many orders were cancelled?",
+  "What are the top 5 product categories by items sold?",
+  "Average delivery time in days for delivered orders?",
+  "Which customer state gives the lowest average review score?",
+  "Which month in 2017 had the highest total payment value?",
+  "What is the profit margin per category?",
+];
+
+const form = document.getElementById("ask-form");
+const input = document.getElementById("q");
+const button = document.getElementById("ask-btn");
+const thread = document.getElementById("thread");
+
+const examples = document.getElementById("examples");
+for (const text of EXAMPLES) {
+  const chip = document.createElement("button");
+  chip.type = "button";
+  chip.textContent = text;
+  chip.onclick = () => { input.value = text; form.requestSubmit(); };
+  examples.appendChild(chip);
+}
+
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const question = input.value.trim();
+  if (question.length < 3 || button.disabled) return;
+  input.value = "";
+  ask(question);
+});
+
+// ---------- helpers ----------
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function inline(s) {
+  return escapeHtml(s)
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+}
+
+// Small markdown renderer: paragraphs, bullet lists, pipe tables, **bold**, `code`.
+function renderMarkdown(text) {
+  const lines = text.split("\n");
+  let html = "", list = false, i = 0;
+  const closeList = () => { if (list) { html += "</ul>"; list = false; } };
+  while (i < lines.length) {
+    const line = lines[i].trim();
+    if (line.startsWith("|")) {
+      closeList();
+      const rows = [];
+      while (i < lines.length && lines[i].trim().startsWith("|")) {
+        const cells = lines[i].trim().replace(/^\||\|$/g, "").split("|").map(c => c.trim());
+        if (!cells.every(c => /^:?-+:?$/.test(c))) rows.push(cells);
+        i++;
+      }
+      html += "<table>" + rows.map((r, n) =>
+        "<tr>" + r.map(c => n === 0 ? `<th>${inline(c)}</th>` : `<td>${inline(c)}</td>`).join("") + "</tr>"
+      ).join("") + "</table>";
+      continue;
+    }
+    if (/^[-*] /.test(line)) {
+      if (!list) { html += "<ul>"; list = true; }
+      html += `<li>${inline(line.slice(2))}</li>`;
+    } else if (line === "") {
+      closeList();
+    } else {
+      closeList();
+      html += `<p>${inline(line)}</p>`;
+    }
+    i++;
+  }
+  closeList();
+  return html;
+}
+
+const isNumber = v => typeof v === "number" && isFinite(v);
+
+function formatNumber(v) {
+  if (!isNumber(v)) return v === null ? "—" : String(v);
+  return Number.isInteger(v) ? v.toLocaleString() : v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
+function describeStep(tool, args) {
+  switch (tool) {
+    case "list_tables": return ["Listing tables", ""];
+    case "describe_table": return ["Reading table", args.table];
+    case "get_distinct_values": return ["Checking values in", `${args.table}.${args.column}`];
+    case "run_query": return ["Running query", args.sql.replace(/\s+/g, " ")];
+    default: return [tool, JSON.stringify(args)];
+  }
+}
+
+// ---------- rendering an answer ----------
+
+function renderResult(container, data) {
+  const { columns, rows } = data;
+  if (!columns.length || !rows.length) return;
+
+  // One number -> show it big.
+  if (rows.length === 1 && columns.length === 1 && isNumber(rows[0][0])) {
+    container.appendChild(el("div", "stat", formatNumber(rows[0][0])));
+    container.appendChild(el("div", "stat-label", columns[0]));
+    return;
+  }
+
+  // Label + number columns, a handful of rows -> bar chart.
+  if (columns.length === 2 && rows.length >= 2 && rows.length <= 25 && rows.every(r => isNumber(r[1]))) {
+    const max = Math.max(...rows.map(r => Math.abs(r[1]))) || 1;
+    const bars = el("div", "bars");
+    for (const [label, value] of rows) {
+      bars.appendChild(el("div", "label", label === null ? "(none)" : String(label)));
+      const track = el("div", "track");
+      const bar = el("div", "bar");
+      bar.style.width = `${(Math.abs(value) / max) * 85}%`;
+      track.append(bar, el("span", "val", formatNumber(value)));
+      bars.appendChild(track);
+    }
+    container.appendChild(bars);
+  }
+
+  // Always show the table too.
+  const wrap = el("div", "table-wrap");
+  const table = el("table");
+  const head = el("tr");
+  columns.forEach((c, i) => head.appendChild(el("th", rows.every(r => isNumber(r[i]) || r[i] === null) ? "num" : "", c)));
+  table.appendChild(head);
+  for (const row of rows) {
+    const tr = el("tr");
+    row.forEach(v => tr.appendChild(el("td", isNumber(v) ? "num" : "", formatNumber(v))));
+    table.appendChild(tr);
+  }
+  wrap.appendChild(table);
+  container.appendChild(wrap);
+  if (data.truncated) container.appendChild(el("div", "meta", `Showing the first ${rows.length} rows.`));
+}
+
+function renderAnswer(turn, data, steps) {
+  const answer = el("div", "answer");
+  if (data.cannot_answer) answer.appendChild(el("div", "notice", "The data can't answer this"));
+  const prose = el("div");
+  prose.innerHTML = renderMarkdown(data.text || "");
+  answer.appendChild(prose);
+  turn.appendChild(answer);
+
+  if (data.query_error) turn.appendChild(el("p", "error-box", `Couldn't re-run the final query: ${data.query_error}`));
+  renderResult(turn, data);
+
+  if (data.sql) {
+    const details = el("details");
+    details.appendChild(el("summary", "", "SQL used"));
+    details.appendChild(el("pre", "", data.sql));
+    turn.appendChild(details);
+  }
+  turn.appendChild(el("div", "meta",
+    `${steps} tool call${steps === 1 ? "" : "s"} · ${data.llm_calls} LLM call${data.llm_calls === 1 ? "" : "s"} · ${data.elapsed_s}s`));
+}
+
+// ---------- talking to the API ----------
+
+async function ask(question) {
+  button.disabled = true;
+  const turn = el("article", "turn");
+  turn.appendChild(el("p", "question", question));
+  const trace = el("ul", "trace");
+  const working = el("div", "working", "Working");
+  turn.append(trace, working);
+  thread.appendChild(turn);
+  turn.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  let steps = 0;
+  const handle = (event) => {
+    if (event.type === "step") {
+      steps++;
+      const [label, detail] = describeStep(event.tool, event.args);
+      const li = el("li");
+      li.appendChild(el("span", "", label));
+      if (detail) li.appendChild(el("span", "detail", detail));
+      trace.appendChild(li);
+    } else if (event.type === "tool_error") {
+      const li = el("li", "err");
+      li.appendChild(el("span", "", `${event.tool} failed — retrying`));
+      li.appendChild(el("span", "detail", event.message.replace(/^Error:\s*/, "")));
+      trace.appendChild(li);
+    } else if (event.type === "answer") {
+      working.remove();
+      renderAnswer(turn, event, steps);
+    } else if (event.type === "error") {
+      working.remove();
+      turn.appendChild(el("p", "error-box", event.message));
+    }
+  };
+
+  try {
+    const response = await fetch("/api/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }),
+    });
+    if (!response.ok) {
+      let message = `Request failed (${response.status}).`;
+      try {
+        const body = await response.json();
+        if (typeof body.detail === "string") message = body.detail;
+      } catch {}
+      throw new Error(message);
+    }
+    // The server sends one JSON object per line as the agent works.
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let newline;
+      while ((newline = buffer.indexOf("\n")) >= 0) {
+        const line = buffer.slice(0, newline).trim();
+        buffer = buffer.slice(newline + 1);
+        if (line) handle(JSON.parse(line));
+      }
+    }
+    if (buffer.trim()) handle(JSON.parse(buffer));
+  } catch (error) {
+    working.remove();
+    turn.appendChild(el("p", "error-box", error.message));
+  } finally {
+    if (working.isConnected) working.remove();
+    button.disabled = false;
+    input.focus();
+  }
+}
+</script>
+</body>
+</html>
